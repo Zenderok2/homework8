@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Форма обратной связи</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        /* Стили для модального окна */
+        #modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+        }
+        #modalContent {
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            width: 90%;
+            max-width: 500px;
+        }
+    </style>
+</head>
+<body>
+
+<h1 id="section" class="text-center my-4">Форма обратной связи</h1>
+<button id="openFormBtn" class="btn btn-primary">Открыть форму обратной связи</button>
+
+<div id="modal">
+    <div id="modalContent">
+        <form id="contactForm" class="contact-form">
+            <div class="mb-3">
+                <label for="name" class="form-label">ФИО:</label>
+                <input type="text" id="name" name="name" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="phone" class="form-label">Телефон:</label>
+                <input type="tel" id="phone" name="phone" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="email" class="form-label">Email:</label>
+                <input type="email" id="email" name="email" class="form-control" required>
+            </div>
+
+            <div class="mb-3">
+                <label for="organization" class="form-label">Организация:</label>
+                <input type="text" id="organization" name="organization" class="form-control">
+            </div>
+
+            <div class="mb-3">
+                <label for="message" class="form-label">Сообщение:</label>
+                <textarea id="message" name="message" class="form-control" rows="5" required></textarea>
+            </div>
+
+            <div class="mb-3 form-check">
+                <input type="checkbox" id="policy" name="policy" class="form-check-input" required>
+                <label for="policy" class="form-check-label">Согласие с политикой обработки персональных данных</label>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Отправить</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const openFormBtn = document.getElementById('openFormBtn');
+        const modal = document.getElementById('modal');
+        const contactForm = document.getElementById('contactForm');
+
+        // Функция открытия попапа с формой
+        function openModal() {
+            modal.style.display = 'flex';
+            history.pushState({ formOpen: true }, null, '#contact-form');
+            loadFormData(); // Восстановление данных из LocalStorage
+        }
+
+        // Функция закрытия попапа
+        function closeModal() {
+            modal.style.display = 'none';
+            history.back();
+        }
+
+        // Кнопка открытия формы
+        openFormBtn.addEventListener('click', openModal);
+
+        // Закрытие формы при нажатии "Назад" в браузере
+        window.addEventListener('popstate', (event) => {
+            if (!event.state?.formOpen) closeModal();
+        });
+
+        // Валидация формы и отправка данных через fetch
+        contactForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!validateForm()) return;
+
+            const formData = new FormData(contactForm);
+            try {
+                const response = await fetch('https://formcarry.com/s/6GoE6rdKUr1', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json'  // Установка Accept заголовка для ожидания JSON ответа
+                    },
+                    body: formData
+                });
+                
+                if (response.ok) {
+                    alert('Сообщение отправлено успешно!');
+                    clearFormData();
+                    closeModal();
+                } else {
+                    const errorMessage = await response.text(); // Получаем текст ошибки
+                    alert(`Сообщение не доставлено. Статус: ${response.status}. Текст ошибки: ${errorMessage}`);
+                }
+            } catch (error) {
+                alert(error.message);
+            }
+        });
+
+        // Функция для сохранения данных формы в LocalStorage
+        function saveFormData() {
+            const data = {
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                organization: document.getElementById('organization').value,
+                message: document.getElementById('message').value
+            };
+            localStorage.setItem('contactFormData', JSON.stringify(data));
+        }
+
+        // Восстановление данных из LocalStorage
+        function loadFormData() {
+            const data = JSON.parse(localStorage.getItem('contactFormData'));
+            if (data) {
+                document.getElementById('name').value = data.name;
+                document.getElementById('phone').value = data.phone;
+                document.getElementById('email').value = data.email;
+                document.getElementById('organization').value = data.organization;
+                document.getElementById('message').value = data.message;
+            }
+        }
+
+        // Очистка данных формы и LocalStorage после отправки
+        function clearFormData() {
+            localStorage.removeItem('contactFormData');
+            contactForm.reset();
+        }
+
+        // Валидация полей формы
+        function validateForm() {
+            saveFormData();  // Сохранение данных перед валидацией
+            const name = document.getElementById('name').value;
+            const nameRegex = /^[А-Яа-яЁё]+\s[А-Яа-яЁё]+\s[А-Яа-яЁё]+$/;
+            if (!nameRegex.test(name)) {
+                alert("ФИО должно быть на кириллице и содержать 3 слова.");
+                return false;
+            }
+            const phone = document.getElementById('phone').value;
+            const phoneRegex = /^\+79\d{9}$/;
+            if (!phoneRegex.test(phone)){
+                alert("Телефон должен начинаться с +79 и содержать 8 цифр после.");
+                return false;
+            }
+            const email = document.getElementById('email').value;
+            if (email.length < 6) {
+            alert("Email должен содержать не менее 6 символов.");
+                return false;
+            }
+            const organization = document.getElementById('organization').value;
+            if (organization.length < 3) {
+                alert("Компания должна иметь минимум 3 символа в названии.");
+                return false;
+            }
+            const message = document.getElementById('message').value;
+            if (message.length < 10) {
+                alert("Сообщение должно быть не меньше 10 символов.");
+                return false;
+            }
+            return true;
+        }
+    });
+</script>
+
+</body>
+</html>
